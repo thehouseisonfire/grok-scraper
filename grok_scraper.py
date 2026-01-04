@@ -1,6 +1,7 @@
 import argparse
 import time
 import re
+import os
 from playwright.sync_api import sync_playwright
 from bs4 import BeautifulSoup
 import html2text
@@ -67,13 +68,39 @@ def scrape_grok_conversation(url, output_file=None):
         page = context.new_page()
 
         try:
-            page.goto(url)
-            # Wait for hydration. Grok usually shows the title or content.
-            # We wait for the network to settle.
-            page.wait_for_load_state("networkidle")
+            # Increased timeout and use 'domcontentloaded' instead of 'networkidle'
+            print("[-] Navigating to URL...")
+            try:
+                page.goto(url, wait_until="domcontentloaded", timeout=60000)
+            except Exception as e:
+                print(f"[!] Warning: initial navigation timed out or failed: {e}")
 
-            # Additional safety wait for React to render
-            time.sleep(3)
+            # Wait for any of the common message containers to appear
+            print("[-] Waiting for content to load...")
+            selectors = [
+                "main div.prose",
+                "article",
+                "div[id^='message-']",
+                ".r-1p0dtai" # Common Grok obfuscated class
+            ]
+            
+            content_found = False
+            for selector in selectors:
+                try:
+                    page.wait_for_selector(selector, timeout=10000)
+                    content_found = True
+                    print(f"[-] Found content with selector: {selector}")
+                    break
+                except:
+                    continue
+            
+            if not content_found:
+                print("[!] Warning: No specific message selectors found. Waiting as fallback.")
+                time.sleep(5)
+
+            # Scroll down to ensure all content is rendered (Grok can be lazy)
+            page.evaluate("window.scrollTo(0, document.body.scrollHeight)")
+            time.sleep(2)
 
             # Get content
             html_content = page.content()
@@ -82,214 +109,105 @@ def scrape_grok_conversation(url, output_file=None):
             metadata = extract_metadata(soup)
             print(f"[-] Detected Title: {metadata.get('title')}")
 
-            # --- Heuristic Extraction Strategy ---
-            # 1. Use the description to find the first user message.
-            search_text = metadata.get("description", "")[:50]  # First 50 chars
-
+            # --- Message Extraction Strategy ---
+            # We look for blocks that represent a user/grok turn.
+            # Usually these are siblings in a container.
+            
             messages = []
+            
+            # Step 1: Find the main content area
+            main = soup.find("main") or soup.find("article") or soup.body
+            
+            # Step 2: Look for elements that look like messages
+            # Heuristic: Find all blocks that contain 'prose' content.
+            # In Grok shared pages, each turn (User or Grok) is usually a child of a common container.
+            
+            # Find all prose containers
+            prose_elements = main.select(".prose")
+            if not prose_elements:
+                # Try more generic selectors if .prose isn't used
+                prose_elements = main.find_all(recursive=True, attrs={"class": lambda x: x and "message" in x.lower()})
 
-            # Fallback: If we can't find by description, we look for generic structure
-            # We look for the main scrollable container. In many Next.js apps this is a main tag or a specific div.
-
-            # Let's try to identify message blocks.
-            # In Grok (and others), usually:
-            # - User messages are in a container.
-            # - Grok messages are in a container.
-            # - They might have specific classes, but we want to be class-agnostic if possible.
-
-            # Strategy: Find all elements that look like message bubbles.
-            # We will assume that the conversation is a list of blocks.
-
-            # Let's try to find the container by finding the text "Grok" which usually heads the bot response
-            # Note: Grok sometimes uses an icon, but usually there's an aria-label or text.
-
-            # More robust: Look for the specific message containers.
-            # We will use Playwright to locate the element containing the description text
-            try:
-                # Find the element containing the start of the description
-                if search_text:
-                    first_msg_locator = page.get_by_text(search_text, exact=False).first
-                    if first_msg_locator.count() > 0:
-                        print("[-] Locate conversation via description text...")
-                        # We want to find the repeated container parent.
-                        # This is tricky blindly.
-                        pass
-            except Exception as e:
-                print(f"[!] Warning: Could not locate via description: {e}")
-
-            # General parsing of the current DOM state using BeautifulSoup
-            # We look for a container that has multiple children with significant text.
-
-            # Let's look for "User" and "Grok" headers if they exist as text
-            # Often they are h2, h3, or strong tags.
-
-            # ALTERNATIVE: Dump all text nodes and reconstruction.
-            # BUT we need formatting (code blocks).
-
-            # Let's try to capture the main article or main tag
-            main_content = soup.find("main") or soup.find("article") or soup.body
-
-            # Filter for message-like divs.
-            # A message block usually contains:
-            # 1. A header (Avatar/Name)
-            # 2. The content
-
-            extracted_blocks = []
-
-            # Iterate recursively or linearly to find message groups
-            # We'll rely on the visual separation usually implemented via distinct divs
-
-            # Looking at the 'grok_dump.html' from earlier, the classes were obfuscated (r-1p0dtai etc).
-            # This confirms we can't use classes.
-
-            # We will assume a structure of:
-            # [User Message Block] -> contains text matching description
-            # [Grok Message Block]
-
-            # Let's find the description node again in BS4
-            if search_text:
-                desc_node = main_content.find(
-                    string=lambda text: text and search_text in text
-                )
-                if desc_node:
-                    # Walk up until we hit a container that looks like a list item (e.g. has siblings of same type)
-                    current = desc_node.parent
-                    message_container = None
-
-                    # We walk up 10 levels max
-                    for _ in range(10):
-                        if current.name == "body":
-                            break
-                        if current.parent:
-                            siblings = list(
-                                current.parent.find_all(current.name, recursive=False)
-                            )
-                            # If we have multiple siblings (messages), this is likely the conversation container
-                            if len(siblings) > 1:
-                                message_container = current.parent
-                                break
-                        current = current.parent
-
-                    if message_container:
-                        print("[-] Identified conversation container.")
-                        children = message_container.find_all(recursive=False)
-
-                        for child in children:
-                            text = child.get_text()
-                            if not text.strip():
-                                continue
-
-                            # Heuristic to detect role switch
-                            # Does this child contain "Grok" or "User" explicitly?
-                            # Often Grok displays "Grok" above the response.
-
-                            # Check for "Grok" header
-                            # This is fuzzy. We'll default to alternating if we found the first one is User.
-
-                            # However, sometimes there are "Regenerate" buttons or other UI elements.
-                            # We filter for substantial content.
-
-                            # Check if it is a message
-                            # Convert to MD
-                            md = setup_markdown_converter().handle(str(child))
-
-                            # Cleanup metadata/buttons from the text
-                            # (e.g., "Copy", "Regenerate", "Edit")
-                            md_lines = md.splitlines()
-                            cleaned_lines = []
-                            is_code_block = False
-                            for line in md_lines:
-                                if line.strip().startswith("```"):
-                                    is_code_block = not is_code_block
-
-                                # Filter common UI noise if not in code block
-                                if not is_code_block:
-                                    if line.strip() in [
-                                        "Copy",
-                                        "Edit",
-                                        "Regenerate",
-                                        "Share",
-                                        "Grok",
-                                    ]:
-                                        continue
-
-                                cleaned_lines.append(line)
-
-                            clean_md = "\n".join(cleaned_lines).strip()
-
-                            if not clean_md:
-                                continue
-
-                            # Detect Role
-                            # If the block contains "Grok" at the start, it's Grok.
-                            # If the previous was User, this is likely Grok.
-
-                            # Let's try to find specific headers inside the HTML
-                            # Often <div class="..." >Grok</div>
-
-                            # Simple Alternating logic for now, seeded by the first message being User
-                            # (since it matched the description)
-
-                            extracted_blocks.append(
-                                {
-                                    "role": "Unknown",  # Will resolve later
-                                    "content": clean_md,
-                                    "html": str(child),
-                                }
-                            )
-
-            # Post-processing roles
-            # The first message matching description is DEFINITELY the User.
-            # We assume alternating for now.
-            if extracted_blocks:
-                # Find the index of the block that matches description
-                start_idx = 0
-                for i, block in enumerate(extracted_blocks):
-                    if search_text in block["content"] or search_text in block["html"]:
-                        start_idx = i
-                        block["role"] = "User"
+            # Find the closest common parent for each prose element that represents the turn
+            turns = []
+            seen_turn_nodes = set()
+            
+            for pe in prose_elements:
+                # Walk up to find a node that is a child of a large container
+                curr = pe
+                while curr and curr.parent and curr.parent.name != "body":
+                    # If this node has siblings and is "high enough" in the tree, it might be a turn
+                    parent = curr.parent
+                    siblings = parent.find_all(recursive=False)
+                    if len(siblings) > 1:
+                        # If this parent seems to be the main list of messages
+                        if curr not in seen_turn_nodes:
+                            turns.append(curr)
+                            seen_turn_nodes.add(curr)
                         break
+                    curr = curr.parent
 
-                # Propagate roles
-                # This is a naive assumption (alternating).
-                # But for a shared link, it is usually strict turns.
-                roles = ["User", "Grok"]
-                current_role_idx = 0  # 0 for User
+            print(f"[-] Identified {len(turns)} conversation turns.")
 
-                for i in range(start_idx + 1, len(extracted_blocks)):
-                    current_role_idx = 1 - current_role_idx
-                    extracted_blocks[i]["role"] = roles[current_role_idx]
+            # Process turns
+            # The first message in a shared link is ALWAYS the user prompt that started it.
+            # Then they alternate.
+            
+            current_role = "User"
+            for turn in turns:
+                text = turn.get_text(strip=True)
+                if not text:
+                    continue
+                
+                # Role check: If it contains "Grok" at the very beginning (common in some views)
+                # or if it's strictly alternating.
+                
+                # Convert to MD
+                converter = setup_markdown_converter()
+                md_content = converter.handle(str(turn))
+                
+                # Clean UI noise
+                lines = md_content.splitlines()
+                cleaned = []
+                is_code = False
+                for L in lines:
+                    if L.strip().startswith("```"):
+                        is_code = not is_code
+                    if not is_code:
+                        if L.strip() in ["Copy", "Edit", "Regenerate", "Share", "Grok"]:
+                            continue
+                    cleaned.append(L)
+                
+                final_md = "\n".join(cleaned).strip()
+                if not final_md:
+                    continue
 
-                # Backwards (if any)
-                # ...
+                messages.append({
+                    "role": current_role,
+                    "content": final_md
+                })
+                
+                # Toggle role
+                current_role = "Grok" if current_role == "User" else "User"
 
-                messages = extracted_blocks[start_idx:]
-
-            else:
-                print("[!] Could not auto-detect conversation structure.")
-                print("[!] Dumping full page text as fallback.")
-                messages.append(
-                    {
-                        "role": "System",
-                        "content": setup_markdown_converter().handle(str(main_content)),
-                    }
-                )
+            if not messages:
+                print("[!] No messages extracted. Dumping page source.")
+                messages.append({
+                    "role": "System",
+                    "content": "No messages found. Full page text:\n\n" + main.get_text()
+                })
 
             # Formatting Output
             if not output_file:
-                output_file = (
-                    f"{clean_filename(metadata.get('title', 'conversation'))}.md"
-                )
+                output_file = f"{clean_filename(metadata.get('title', 'conversation'))}.md"
 
             with open(output_file, "w", encoding="utf-8") as f:
-                # Header
                 f.write(f"# {metadata.get('title')}\n\n")
                 if "url" in metadata:
                     f.write(f"**Source**: {metadata['url']}\n")
-                f.write(f"**Date**: {time.strftime('%Y-%m-%d')}")  # Approximate
-                f.write("\n---\n\n")
+                f.write(f"**Date**: {time.strftime('%Y-%m-%d')}\n")
+                f.write("---\n\n")
 
-                # Messages
                 for msg in messages:
                     f.write(f"## {msg['role']}\n\n")
                     f.write(msg["content"])
@@ -300,19 +218,14 @@ def scrape_grok_conversation(url, output_file=None):
         except Exception as e:
             print(f"[!] Error: {e}")
             import traceback
-
             traceback.print_exc()
         finally:
             browser.close()
 
 
 if __name__ == "__main__":
-    parser = argparse.ArgumentParser(
-        description="Scrape Grok shared conversations to Markdown."
-    )
-    parser.add_argument(
-        "url", help="The Grok share URL (e.g., https://grok.com/share/..."
-    )
+    parser = argparse.ArgumentParser(description="Scrape Grok shared conversations to Markdown.")
+    parser.add_argument("url", help="The Grok share URL")
     parser.add_argument("-o", "--output", help="Output filename")
 
     args = parser.parse_args()
