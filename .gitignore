@@ -1,1 +1,7 @@
 node_modules/
+__pycache__/
+
+# Scraped content - do not track
+*.html
+*.md
+!README.md
