@@ -1,0 +1,27 @@
+{
+  "name": "grok-scraper",
+  "version": "1.0.0",
+  "type": "module",
+  "scripts": {
+    "scrape": "bun src/grok-to-markdown.ts",
+    "build": "tsc --project tsconfig.json",
+    "start": "node dist/grok-to-markdown.js",
+    "lint": "oxlint src/",
+    "lint:fix": "oxlint --fix src/",
+    "format": "oxfmt src/",
+    "format:check": "oxfmt --check src/",
+    "check": "bun run lint && bun run format:check && bun run build"
+  },
+  "dependencies": {
+    "playwright": "^1.62.0",
+    "turndown": "^7.2.4",
+    "turndown-plugin-gfm": "^1.0.2"
+  },
+  "devDependencies": {
+    "@types/node": "^26.1.2",
+    "@types/turndown": "^5.0.6",
+    "oxfmt": "^0.61.0",
+    "oxlint": "^1.76.0",
+    "typescript": "7"
+  }
+}
