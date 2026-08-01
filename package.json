@@ -1,6 +1,8 @@
 {
   "name": "grok-scraper",
   "version": "1.0.0",
+  "author": "thehouseisonfire",
+  "license": "MIT OR Apache-2.0",
   "type": "module",
   "scripts": {
     "scrape": "bun src/grok-to-markdown.ts",
