@@ -9,6 +9,7 @@ Scrape shared Grok conversations and save them as clean Markdown.
 - Automatic selector discovery with fallback chain
 - Role inference from DOM attributes, structure, and text heuristics
 - Atomic file writes (temp + rename)
+- Graceful Ctrl+C shutdown (press again to force quit)
 - Non-zero exit codes on failure with optional `--debug-html` capture
 - GFM support (tables, strikethrough, task lists)
 
