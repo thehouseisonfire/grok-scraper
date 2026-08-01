@@ -4,7 +4,7 @@ import { mkdir, rename, unlink, writeFile } from "node:fs/promises";
 import { dirname, resolve } from "node:path";
 import { parseArgs } from "node:util";
 
-import { chromium, errors as playwrightErrors, type Page } from "playwright";
+import { chromium, errors as playwrightErrors, type Browser, type Page } from "playwright";
 import TurndownService from "turndown";
 import turndownPluginGfm from "turndown-plugin-gfm";
 
@@ -42,6 +42,31 @@ interface ScrapeResult {
 
 const DEFAULT_TITLE = "Grok Conversation";
 const DEFAULT_TIMEOUT_MS = 60_000;
+
+const SIGINT_EXIT_CODE = 130;
+
+let interrupted = false;
+let activeBrowser: Browser | undefined;
+
+function registerSigintHandler(): void {
+  const onSigint = (): void => {
+    if (interrupted) {
+      process.exit(SIGINT_EXIT_CODE);
+    }
+
+    interrupted = true;
+    console.error("\n[!] Interrupted. Closing the browser (Ctrl+C again to force quit)...");
+
+    const shutdown =
+      activeBrowser !== undefined
+        ? activeBrowser.close().catch(() => undefined)
+        : Promise.resolve();
+
+    void shutdown.then(() => process.exit(SIGINT_EXIT_CODE));
+  };
+
+  process.on("SIGINT", onSigint);
+}
 
 const TITLE_SUFFIX = /\s*(?:\||-)\s*Shared Grok Conversation\s*$/i;
 
@@ -735,6 +760,8 @@ async function scrapeConversation(options: CliOptions): Promise<ScrapeResult> {
     headless: !options.headed,
   });
 
+  activeBrowser = browser;
+
   const context = await browser.newContext({
     locale: "en-US",
     extraHTTPHeaders: {
@@ -820,6 +847,8 @@ async function scrapeConversation(options: CliOptions): Promise<ScrapeResult> {
 }
 
 async function main(): Promise<void> {
+  registerSigintHandler();
+
   const options = parseCliOptions(process.argv.slice(2));
   const result = await scrapeConversation(options);
 
@@ -827,6 +856,10 @@ async function main(): Promise<void> {
 }
 
 main().catch((error: unknown) => {
+  if (interrupted) {
+    return;
+  }
+
   if (error instanceof UsageError) {
     console.error(`[!] ${error.message}\n`);
     printHelp();
