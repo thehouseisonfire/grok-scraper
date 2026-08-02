@@ -40,6 +40,8 @@ bun run scrape "https://grok.com/share/..."
 | `--timeout <ms>` | Navigation/content timeout (default: 60000) |
 | `--debug-html <path>` | Save rendered page HTML for debugging |
 | `--headed` | Show the Chromium window |
+| `-v, --version` | Print the version |
+| `-h, --help` | Show usage help |
 
 ### Examples
 

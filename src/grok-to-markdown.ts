@@ -1,5 +1,6 @@
 #!/usr/bin/env bun
 
+import { readFileSync } from "node:fs";
 import { mkdir, rename, unlink, writeFile } from "node:fs/promises";
 import { dirname, resolve } from "node:path";
 import { parseArgs } from "node:util";
@@ -127,6 +128,7 @@ Options:
                             Default: ${DEFAULT_TIMEOUT_MS}
       --debug-html <path>   Save the rendered page HTML for debugging
       --headed              Show the Chromium window
+  -v, --version             Print the version
   -h, --help                Show this help
 
 Examples:
@@ -165,6 +167,18 @@ function parseUrl(value: string): URL {
   return url;
 }
 
+function packageVersion(): string {
+  try {
+    const packageJson = JSON.parse(
+      readFileSync(resolve(import.meta.dirname, "../package.json"), "utf8"),
+    ) as { version?: unknown };
+
+    return typeof packageJson.version === "string" ? packageJson.version : "0.0.0";
+  } catch {
+    return "0.0.0";
+  }
+}
+
 function parseCliOptions(argv: string[]): CliOptions {
   const cliOptions = {
     output: {
@@ -190,6 +204,11 @@ function parseCliOptions(argv: string[]): CliOptions {
       short: "h",
       default: false,
     },
+    version: {
+      type: "boolean",
+      short: "v",
+      default: false,
+    },
   } as const;
 
   const { values, positionals } = parseArgs({
@@ -198,6 +217,11 @@ function parseCliOptions(argv: string[]): CliOptions {
     allowPositionals: true,
     strict: true,
   });
+
+  if (values.version) {
+    console.log(packageVersion());
+    process.exit(0);
+  }
 
   if (values.help) {
     printHelp();
