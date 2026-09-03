@@ -1,19 +1,53 @@
 {
   "name": "grok-scraper",
   "version": "1.0.0",
-  "author": "thehouseisonfire",
-  "license": "MIT OR Apache-2.0",
+  "description": "Scrape shared Grok conversations and save them as clean Markdown",
   "type": "module",
+  "license": "(MIT OR Apache-2.0)",
+  "author": "thehouseisonfire",
+  "keywords": [
+    "grok",
+    "scraper",
+    "playwright",
+    "markdown",
+    "conversation"
+  ],
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/thehouseisonfire/grok-scraper.git"
+  },
+  "bugs": {
+    "url": "https://github.com/thehouseisonfire/grok-scraper/issues"
+  },
+  "homepage": "https://github.com/thehouseisonfire/grok-scraper#readme",
+  "files": [
+    "bin",
+    "src",
+    "LICENSE-MIT",
+    "LICENSE-APACHE",
+    "README.md"
+  ],
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "engines": {
+    "bun": ">=1.3.0"
+  },
+  "bin": {
+    "grok-scraper": "./bin/grok-scraper.ts"
+  },
   "scripts": {
     "scrape": "bun src/grok-to-markdown.ts",
+    "grok-scraper": "bun run ./bin/grok-scraper.ts",
     "build": "tsc --project tsconfig.json",
     "start": "node dist/grok-to-markdown.js",
     "lint": "oxlint src/",
     "lint:fix": "oxlint --fix src/",
     "format": "oxfmt src/",
     "format:check": "oxfmt --check src/",
-    "test": "bun test",
-    "check": "bun run lint && bun run format:check && bun run build"
+    "test": "bun test --path-ignore-patterns \"dist/**\"",
+    "check": "bun run lint && bun run format:check && bun run test && bun run build",
+    "prepublishOnly": "bun run check && bun test"
   },
   "dependencies": {
     "playwright": "^1.62.0",
@@ -27,5 +61,6 @@
     "oxfmt": "^0.61.0",
     "oxlint": "^1.76.0",
     "typescript": "7"
-  }
+  },
+  "packageManager": "bun@1.4.0"
 }

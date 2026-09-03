@@ -2,6 +2,7 @@
 
 import { mkdir, rename, unlink, writeFile } from "node:fs/promises";
 import { dirname, resolve } from "node:path";
+import { fileURLToPath } from "node:url";
 import { parseArgs } from "node:util";
 
 import { chromium, errors as playwrightErrors, type Browser, type Page } from "playwright";
@@ -17,24 +18,24 @@ import {
   parseUrl,
   type Role,
   UsageError,
-} from "./helpers";
+} from "./helpers.ts";
 
-interface Metadata {
+export interface Metadata {
   title: string;
   url: string;
 }
 
-interface RawTurn {
+export interface RawTurn {
   role: Role | null;
   html: string;
 }
 
-interface Message {
+export interface Message {
   role: Role;
   content: string;
 }
 
-interface CliOptions {
+export interface CliOptions {
   url: URL;
   output?: string;
   debugHtml?: string;
@@ -43,13 +44,15 @@ interface CliOptions {
   headed: boolean;
 }
 
-interface ScrapeResult {
+export interface ScrapeResult {
   outputPath: string;
   messageCount: number;
   selector: string;
 }
 
-const DEFAULT_TIMEOUT_MS = 60_000;
+export const VERSION = "1.0.0";
+
+export const DEFAULT_TIMEOUT_MS = 60_000;
 
 const SIGINT_EXIT_CODE = 130;
 
@@ -82,7 +85,7 @@ function registerSigintHandler(): void {
  * The scraper chooses the first selector which produces at least two
  * non-empty candidate elements after the page has rendered.
  */
-const MESSAGE_SELECTORS = [
+export const MESSAGE_SELECTORS = [
   "[data-message-author-role]",
   '[data-testid*="message-content" i]',
   '[data-testid*="message" i] .prose',
@@ -94,15 +97,15 @@ const MESSAGE_SELECTORS = [
   'main [class*="message" i]',
 ] as const;
 
-class ExtractionError extends Error {
+export class ExtractionError extends Error {
   override readonly name = "ExtractionError";
 }
 
-function printHelp(): void {
+export function printHelp(): void {
   console.log(
     `
 Usage:
-  grok-to-markdown [options] <url>
+  grok-scraper [options] <url>
 
 Scrape a shared Grok conversation and save it as Markdown.
 
@@ -113,6 +116,7 @@ Options:
                             Default: ${DEFAULT_TIMEOUT_MS}
       --debug-html <path>   Save the rendered page HTML for debugging
       --headed              Show the Chromium window
+  -v, --version             Print the version
   -h, --help                Show this help
 
 Examples:
@@ -123,7 +127,7 @@ Examples:
   );
 }
 
-function parseCliOptions(argv: string[]): CliOptions {
+export function parseCliOptions(argv: readonly string[]): CliOptions {
   const cliOptions = {
     output: {
       type: "string",
@@ -143,6 +147,11 @@ function parseCliOptions(argv: string[]): CliOptions {
       type: "boolean",
       default: false,
     },
+    version: {
+      type: "boolean",
+      short: "v",
+      default: false,
+    },
     help: {
       type: "boolean",
       short: "h",
@@ -151,11 +160,16 @@ function parseCliOptions(argv: string[]): CliOptions {
   } as const;
 
   const { values, positionals } = parseArgs({
-    args: argv,
+    args: [...argv],
     options: cliOptions,
     allowPositionals: true,
     strict: true,
   });
+
+  if (values.version) {
+    console.log(VERSION);
+    process.exit(0);
+  }
 
   if (values.help) {
     printHelp();
@@ -188,7 +202,7 @@ function parseCliOptions(argv: string[]): CliOptions {
   };
 }
 
-function configureTurndown(): TurndownService {
+export function configureTurndown(): TurndownService {
   const converter = new TurndownService({
     headingStyle: "atx",
     bulletListMarker: "-",
@@ -544,7 +558,7 @@ async function extractRawTurns(page: Page, selector: string): Promise<RawTurn[]>
   });
 }
 
-function convertTurns(rawTurns: RawTurn[], converter: TurndownService): Message[] {
+export function convertTurns(rawTurns: RawTurn[], converter: TurndownService): Message[] {
   const messages: Message[] = [];
   let expectedRole: Role = "User";
 
@@ -573,7 +587,7 @@ function convertTurns(rawTurns: RawTurn[], converter: TurndownService): Message[
   return messages;
 }
 
-function formatDocument(metadata: Metadata, messages: Message[]): string {
+export function formatDocument(metadata: Metadata, messages: Message[]): string {
   const date = new Date().toISOString().slice(0, 10);
 
   const sections = [
@@ -618,7 +632,7 @@ async function saveDebugHtml(page: Page, path: string): Promise<void> {
   console.log(`[+] Rendered HTML saved to ${outputPath}`);
 }
 
-async function scrapeConversation(options: CliOptions): Promise<ScrapeResult> {
+export async function scrapeConversation(options: CliOptions): Promise<ScrapeResult> {
   console.log(`[-] Launching Chromium in ${options.headed ? "headed" : "headless"} mode`);
 
   const browser = await chromium.launch({
@@ -711,30 +725,39 @@ async function scrapeConversation(options: CliOptions): Promise<ScrapeResult> {
   }
 }
 
-async function main(): Promise<void> {
+export async function main(argv: readonly string[] = process.argv.slice(2)): Promise<number> {
   registerSigintHandler();
 
-  const options = parseCliOptions(process.argv.slice(2));
-  const result = await scrapeConversation(options);
+  try {
+    const options = parseCliOptions(argv);
+    const result = await scrapeConversation(options);
 
-  console.log(`[+] Saved ${result.messageCount} messages to ${result.outputPath}`);
+    console.log(`[+] Saved ${result.messageCount} messages to ${result.outputPath}`);
+    return 0;
+  } catch (error: unknown) {
+    if (interrupted) {
+      return SIGINT_EXIT_CODE;
+    }
+
+    if (error instanceof UsageError) {
+      console.error(`[!] ${error.message}\n`);
+      printHelp();
+    } else {
+      console.error(`[!] ${errorMessage(error)}`);
+
+      if (error instanceof Error && error.cause !== undefined) {
+        console.error(`    Caused by: ${errorMessage(error.cause)}`);
+      }
+    }
+
+    return 1;
+  }
 }
 
-main().catch((error: unknown) => {
-  if (interrupted) {
-    return;
-  }
+const isMainModule =
+  import.meta.main ||
+  (process.argv[1] !== undefined && resolve(process.argv[1]) === fileURLToPath(import.meta.url));
 
-  if (error instanceof UsageError) {
-    console.error(`[!] ${error.message}\n`);
-    printHelp();
-  } else {
-    console.error(`[!] ${errorMessage(error)}`);
-
-    if (error instanceof Error && error.cause !== undefined) {
-      console.error(`    Caused by: ${errorMessage(error.cause)}`);
-    }
-  }
-
-  process.exitCode = 1;
-});
+if (isMainModule) {
+  process.exitCode = await main();
+}

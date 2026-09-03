@@ -1,0 +1,19 @@
+{
+  "name": "@thehouseisonfire/grok-scraper",
+  "version": "1.0.0",
+  "license": "(MIT OR Apache-2.0)",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "publish": {
+    "include": [
+      "src",
+      "LICENSE-MIT",
+      "LICENSE-APACHE",
+      "README.md"
+    ],
+    "exclude": [
+      "bin"
+    ]
+  }
+}

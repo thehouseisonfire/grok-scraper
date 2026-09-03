@@ -8,7 +8,7 @@ import {
   parsePositiveInteger,
   parseUrl,
   UsageError,
-} from "./helpers";
+} from "./helpers.ts";
 
 describe("parsePositiveInteger", () => {
   test("accepts positive integers", () => {

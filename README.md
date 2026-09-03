@@ -25,11 +25,31 @@ bun install
 bunx playwright install chromium
 ```
 
+## Install
+
+```bash
+bun add -g grok-scraper
+# or run without installing
+bunx grok-scraper "https://grok.com/share/..."
+```
+
+As a library:
+
+```bash
+bunx jsr add @thehouseisonfire/grok-scraper
+```
+
+```ts
+import { scrapeConversation } from "@thehouseisonfire/grok-scraper";
+```
+
 ## Usage
 
 ```bash
-bun run scrape "https://grok.com/share/..."
+grok-scraper "https://grok.com/share/..."
 ```
+
+From a source checkout, `bun run scrape` works the same way.
 
 ### Options
 
@@ -45,16 +65,16 @@ bun run scrape "https://grok.com/share/..."
 
 ```bash
 # Basic usage
-bun run scrape "https://grok.com/share/..."
+grok-scraper "https://grok.com/share/..."
 
 # Custom output file
-bun run scrape -o conversation.md "https://grok.com/share/..."
+grok-scraper -o conversation.md "https://grok.com/share/..."
 
 # Debug mode with visible browser
-bun run scrape --headed --debug-html page.html "https://grok.com/share/..."
+grok-scraper --headed --debug-html page.html "https://grok.com/share/..."
 
 # Custom selector when Grok changes its DOM
-bun run scrape --selector 'main .some-message-selector' "https://grok.com/share/..."
+grok-scraper --selector 'main .some-message-selector' "https://grok.com/share/..."
 ```
 
 ## Build (optional)

@@ -4,7 +4,7 @@ export const DEFAULT_TITLE = "Grok Conversation";
 
 export const TITLE_SUFFIX = /\s*(?:\||-)\s*Shared Grok Conversation\s*$/i;
 
-export const UI_NOISE = new Set(
+export const UI_NOISE: Set<string> = new Set(
   [
     "copy",
     "copied",
