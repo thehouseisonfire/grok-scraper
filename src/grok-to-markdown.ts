@@ -20,21 +20,25 @@ import {
   UsageError,
 } from "./helpers.ts";
 
+/** Metadata about a scraped Grok conversation. */
 export interface Metadata {
   title: string;
   url: string;
 }
 
+/** A raw turn extracted from the DOM before conversion to Markdown. */
 export interface RawTurn {
   role: Role | null;
   html: string;
 }
 
+/** A message in a Grok conversation with converted Markdown content. */
 export interface Message {
   role: Role;
   content: string;
 }
 
+/** Command-line options for scraping a Grok conversation. */
 export interface CliOptions {
   url: URL;
   output?: string;
@@ -44,14 +48,17 @@ export interface CliOptions {
   headed: boolean;
 }
 
+/** The result of scraping a Grok conversation. */
 export interface ScrapeResult {
   outputPath: string;
   messageCount: number;
   selector: string;
 }
 
+/** Current package version. */
 export const VERSION = "1.0.0";
 
+/** Default timeout for navigation and content loading (60,000ms). */
 export const DEFAULT_TIMEOUT_MS = 60_000;
 
 const SIGINT_EXIT_CODE = 130;
@@ -80,8 +87,9 @@ function registerSigintHandler(): void {
 }
 
 /**
- * Ordered from relatively semantic/specific selectors to broader fallbacks.
+ * CSS selectors for detecting Grok message elements.
  *
+ * Ordered from relatively semantic/specific selectors to broader fallbacks.
  * The scraper chooses the first selector which produces at least two
  * non-empty candidate elements after the page has rendered.
  */
@@ -97,10 +105,12 @@ export const MESSAGE_SELECTORS = [
   'main [class*="message" i]',
 ] as const;
 
+/** Error thrown when conversation content cannot be extracted. */
 export class ExtractionError extends Error {
   override readonly name = "ExtractionError";
 }
 
+/** Prints the command-line help text to stdout. */
 export function printHelp(): void {
   console.log(
     `
@@ -127,6 +137,7 @@ Examples:
   );
 }
 
+/** Parses command-line arguments into structured options. */
 export function parseCliOptions(argv: readonly string[]): CliOptions {
   const cliOptions = {
     output: {
@@ -202,6 +213,7 @@ export function parseCliOptions(argv: readonly string[]): CliOptions {
   };
 }
 
+/** Creates and configures a TurndownService for HTML-to-Markdown conversion. */
 export function configureTurndown(): TurndownService {
   const converter = new TurndownService({
     headingStyle: "atx",
@@ -558,6 +570,7 @@ async function extractRawTurns(page: Page, selector: string): Promise<RawTurn[]>
   });
 }
 
+/** Converts raw HTML turns into Markdown messages with role inference. */
 export function convertTurns(rawTurns: RawTurn[], converter: TurndownService): Message[] {
   const messages: Message[] = [];
   let expectedRole: Role = "User";
@@ -587,6 +600,7 @@ export function convertTurns(rawTurns: RawTurn[], converter: TurndownService): M
   return messages;
 }
 
+/** Formats a complete conversation as a Markdown document with metadata header. */
 export function formatDocument(metadata: Metadata, messages: Message[]): string {
   const date = new Date().toISOString().slice(0, 10);
 
@@ -632,6 +646,7 @@ async function saveDebugHtml(page: Page, path: string): Promise<void> {
   console.log(`[+] Rendered HTML saved to ${outputPath}`);
 }
 
+/** Scrapes a Grok conversation and saves it as a Markdown file. */
 export async function scrapeConversation(options: CliOptions): Promise<ScrapeResult> {
   console.log(`[-] Launching Chromium in ${options.headed ? "headed" : "headless"} mode`);
 
@@ -725,6 +740,7 @@ export async function scrapeConversation(options: CliOptions): Promise<ScrapeRes
   }
 }
 
+/** Main entry point for the CLI. Returns exit code (0 for success, non-zero for errors). */
 export async function main(argv: readonly string[] = process.argv.slice(2)): Promise<number> {
   registerSigintHandler();
 

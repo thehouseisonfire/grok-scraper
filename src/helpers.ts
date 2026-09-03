@@ -1,9 +1,13 @@
+/** The role of a message author in a Grok conversation. */
 export type Role = "User" | "Grok";
 
+/** Default title used when no conversation title is detected. */
 export const DEFAULT_TITLE = "Grok Conversation";
 
+/** Regex pattern for Grok branding suffixes to strip from conversation titles. */
 export const TITLE_SUFFIX = /\s*(?:\||-)\s*Shared Grok Conversation\s*$/i;
 
+/** Set of UI button/label text to filter out from Markdown content. */
 export const UI_NOISE: Set<string> = new Set(
   [
     "copy",
@@ -20,14 +24,17 @@ export const UI_NOISE: Set<string> = new Set(
   ].map((value) => value.toLowerCase()),
 );
 
+/** Error thrown for invalid command-line usage or input. */
 export class UsageError extends Error {
   override readonly name = "UsageError";
 }
 
+/** Converts an unknown error value to a string message. */
 export function errorMessage(error: unknown): string {
   return error instanceof Error ? error.message : String(error);
 }
 
+/** Parses a string as a positive integer, throwing UsageError if invalid. */
 export function parsePositiveInteger(value: string, option: string): number {
   const parsed = Number(value);
 
@@ -40,6 +47,7 @@ export function parsePositiveInteger(value: string, option: string): number {
   return parsed;
 }
 
+/** Parses and validates a Grok conversation URL, throwing UsageError if invalid. */
 export function parseUrl(value: string): URL {
   let url: URL;
 
@@ -56,12 +64,14 @@ export function parseUrl(value: string): URL {
   return url;
 }
 
+/** Cleans a conversation title by removing Grok branding suffixes and normalizing whitespace. */
 export function cleanTitle(title: string | undefined): string {
   const cleaned = title?.replace(TITLE_SUFFIX, "").replace(/\s+/g, " ").trim();
 
   return cleaned || DEFAULT_TITLE;
 }
 
+/** Converts a conversation title into a safe filename by removing invalid characters. */
 export function cleanFilename(title: string): string {
   const filename = title
     .normalize("NFKC")
@@ -73,6 +83,7 @@ export function cleanFilename(title: string): string {
   return filename || "grok_conversation";
 }
 
+/** Cleans Markdown content by removing UI noise and normalizing whitespace. */
 export function cleanMarkdown(markdown: string, role: Role): string {
   const output: string[] = [];
 
