@@ -4,7 +4,7 @@ import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { parseArgs } from "node:util";
 
-import { chromium, errors as playwrightErrors, type Browser, type Page } from "playwright";
+import { type Browser, chromium, errors as playwrightErrors, type Page } from "playwright";
 import TurndownService from "turndown";
 import turndownPluginGfm from "turndown-plugin-gfm";
 
@@ -55,7 +55,7 @@ export interface ScrapeResult {
 }
 
 /** Current package version. */
-export const VERSION = "1.0.2";
+export const VERSION = "1.0.3";
 
 /** Default timeout for navigation and content loading (60,000ms). */
 export const DEFAULT_TIMEOUT_MS = 60_000;
