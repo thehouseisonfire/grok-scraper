@@ -46,6 +46,7 @@
     "format": "oxfmt src/",
     "format:check": "oxfmt --check src/",
     "test": "bun test --path-ignore-patterns \"dist/**\"",
+    "test:node": "node --test src/",
     "check": "bun run lint && bun run format:check && bun run test && bun run build",
     "prepublishOnly": "bun run check && bun test"
   },

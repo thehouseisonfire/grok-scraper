@@ -1,4 +1,5 @@
-import { describe, expect, test } from "bun:test";
+import assert from "node:assert/strict";
+import { describe, test } from "node:test";
 
 import {
   cleanFilename,
@@ -12,88 +13,86 @@ import {
 
 describe("parsePositiveInteger", () => {
   test("accepts positive integers", () => {
-    expect(parsePositiveInteger("42", "--timeout")).toBe(42);
+    assert.equal(parsePositiveInteger("42", "--timeout"), 42);
   });
 
   test("rejects zero and negatives", () => {
-    expect(() => parsePositiveInteger("0", "--timeout")).toThrow(UsageError);
-    expect(() => parsePositiveInteger("-5", "--timeout")).toThrow(UsageError);
+    assert.throws(() => parsePositiveInteger("0", "--timeout"), UsageError);
+    assert.throws(() => parsePositiveInteger("-5", "--timeout"), UsageError);
   });
 
   test("rejects non-integer and non-numeric input", () => {
-    expect(() => parsePositiveInteger("1.5", "--timeout")).toThrow(UsageError);
-    expect(() => parsePositiveInteger("abc", "--timeout")).toThrow(UsageError);
+    assert.throws(() => parsePositiveInteger("1.5", "--timeout"), UsageError);
+    assert.throws(() => parsePositiveInteger("abc", "--timeout"), UsageError);
   });
 
   test("mentions the offending option in the error", () => {
-    expect(() => parsePositiveInteger("abc", "--timeout")).toThrow(/--timeout/);
+    assert.throws(() => parsePositiveInteger("abc", "--timeout"), /--timeout/);
   });
 });
 
 describe("parseUrl", () => {
   test("accepts http and https URLs", () => {
-    expect(parseUrl("https://grok.com/share/abc").protocol).toBe("https:");
-    expect(parseUrl("http://example.com").protocol).toBe("http:");
+    assert.equal(parseUrl("https://grok.com/share/abc").protocol, "https:");
+    assert.equal(parseUrl("http://example.com").protocol, "http:");
   });
 
   test("rejects malformed URLs", () => {
-    expect(() => parseUrl("not a url")).toThrow(UsageError);
+    assert.throws(() => parseUrl("not a url"), UsageError);
   });
 
   test("rejects unsupported protocols", () => {
-    expect(() => parseUrl("file:///etc/passwd")).toThrow(/Unsupported URL protocol/);
+    assert.throws(() => parseUrl("file:///etc/passwd"), /Unsupported URL protocol/);
   });
 });
 
 describe("cleanTitle", () => {
   test("strips the shared-conversation suffix", () => {
-    expect(cleanTitle("AI Insights | Shared Grok Conversation")).toBe("AI Insights");
+    assert.equal(cleanTitle("AI Insights | Shared Grok Conversation"), "AI Insights");
   });
 
   test("collapses internal whitespace", () => {
-    expect(cleanTitle("  Spacey\n  Title  ")).toBe("Spacey Title");
+    assert.equal(cleanTitle("  Spacey\n  Title  "), "Spacey Title");
   });
 
   test("falls back to the default title", () => {
-    expect(cleanTitle("   ")).toBe(DEFAULT_TITLE);
-    expect(cleanTitle(undefined)).toBe(DEFAULT_TITLE);
+    assert.equal(cleanTitle("   "), DEFAULT_TITLE);
+    assert.equal(cleanTitle(undefined), DEFAULT_TITLE);
   });
 });
 
 describe("cleanFilename", () => {
   test("replaces whitespace and normalizes separators", () => {
-    expect(cleanFilename("My Conversation")).toBe("My_Conversation");
+    assert.equal(cleanFilename("My Conversation"), "My_Conversation");
   });
 
   test("removes reserved filesystem characters", () => {
-    expect(cleanFilename('a<:>"?*')).toBe("a");
+    assert.equal(cleanFilename('a<:>"?*'), "a");
   });
 
   test("trims leading and trailing dots/spaces", () => {
-    expect(cleanFilename(" .hidden. ")).toBe("hidden");
+    assert.equal(cleanFilename(" .hidden. "), "hidden");
   });
 
   test("falls back when nothing remains", () => {
-    expect(cleanFilename(":::")).toBe("grok_conversation");
+    assert.equal(cleanFilename(":::"), "grok_conversation");
   });
 });
 
 describe("cleanMarkdown", () => {
   test("drops known UI noise outside code fences", () => {
-    const cleaned = cleanMarkdown("Hello\nCopy\nRegenerate\nWorld", "User");
-    expect(cleaned).toBe("Hello\nWorld");
+    assert.equal(cleanMarkdown("Hello\nCopy\nRegenerate\nWorld", "User"), "Hello\nWorld");
   });
 
   test("preserves noise-like lines inside code fences", () => {
-    const cleaned = cleanMarkdown("```\nCopy\n```\nAfter", "Grok");
-    expect(cleaned).toBe("```\nCopy\n```\nAfter");
+    assert.equal(cleanMarkdown("```\nCopy\n```\nAfter", "Grok"), "```\nCopy\n```\nAfter");
   });
 
   test("removes a leading role label", () => {
-    expect(cleanMarkdown("User:\nQuestion here", "User")).toBe("Question here");
+    assert.equal(cleanMarkdown("User:\nQuestion here", "User"), "Question here");
   });
 
   test("collapses excess blank lines", () => {
-    expect(cleanMarkdown("a\n\n\n\n\nb", "User")).toBe("a\n\nb");
+    assert.equal(cleanMarkdown("a\n\n\n\n\nb", "User"), "a\n\nb");
   });
 });

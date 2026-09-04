@@ -15,19 +15,35 @@ Scrape shared Grok conversations and save them as clean Markdown.
 
 ## Prerequisites
 
-- [Bun](https://bun.sh)
+- One of [Bun](https://bun.sh), [Deno](https://deno.com), or [Node.js](https://nodejs.org)
 - [Playwright Chromium](https://playwright.dev)
 
 ## Setup
+
+### Bun
 
 ```bash
 bun install
 bunx playwright install chromium
 ```
 
+### Deno
+
+```bash
+deno run -A npm:playwright install chromium
+```
+
+### Node.js
+
+```bash
+npm install
+npx playwright install chromium
+```
+
 ## Install
 
 ```bash
+# Bun
 bun add -g grok-scraper
 # or run without installing
 bunx grok-scraper "https://grok.com/share/..."
@@ -35,21 +51,43 @@ bunx grok-scraper "https://grok.com/share/..."
 
 As a library:
 
+```ts
+import { scrapeConversation } from "@thehouseisonfire/grok-scraper";
+```
+
+Install via [`jsr`](https://jsr.io) from any runtime:
+
 ```bash
+# Deno
+deno add @thehouseisonfire/grok-scraper
+# Bun
 bunx jsr add @thehouseisonfire/grok-scraper
 ```
 
-```ts
-import { scrapeConversation } from "@thehouseisonfire/grok-scraper";
+## Testing
+
+The test suite uses `node:test`, so it runs on any runtime:
+
+```bash
+bun test
+deno test -A
+node --test
 ```
 
 ## Usage
 
 ```bash
+# Bun
 grok-scraper "https://grok.com/share/..."
+
+# Deno (from a source checkout)
+deno run -A bin/grok-scraper.ts "https://grok.com/share/..."
+
+# Node.js (after building)
+node dist/grok-to-markdown.js "https://grok.com/share/..."
 ```
 
-From a source checkout, `bun run scrape` works the same way.
+From a source checkout, `bun run scrape` and `deno task scrape` work the same way.
 
 ### Options
 
@@ -79,7 +117,7 @@ grok-scraper --selector 'main .some-message-selector' "https://grok.com/share/..
 
 ## Build (optional)
 
-Compile to JavaScript for use without bun:
+Compile to JavaScript for use without a TypeScript runner (e.g. plain Node.js):
 
 ```bash
 bun run build

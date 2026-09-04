@@ -1,5 +1,4 @@
-#!/usr/bin/env bun
-
+import process from "node:process";
 import { mkdir, rename, unlink, writeFile } from "node:fs/promises";
 import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -130,9 +129,9 @@ Options:
   -h, --help                Show this help
 
 Examples:
-  bun run scrape "https://grok.com/share/..."
-  bun run scrape -o conversation.md "https://grok.com/share/..."
-  bun run scrape --headed --debug-html page.html "https://..."
+  grok-scraper "https://grok.com/share/..."
+  grok-scraper -o conversation.md "https://grok.com/share/..."
+  grok-scraper --headed --debug-html page.html "https://..."
 `.trim(),
   );
 }
@@ -771,7 +770,7 @@ export async function main(argv: readonly string[] = process.argv.slice(2)): Pro
 }
 
 const isMainModule =
-  import.meta.main ||
+  (import.meta as ImportMeta & { main?: boolean }).main === true ||
   (process.argv[1] !== undefined && resolve(process.argv[1]) === fileURLToPath(import.meta.url));
 
 if (isMainModule) {

@@ -1,4 +1,5 @@
-import { describe, expect, test } from "bun:test";
+import assert from "node:assert/strict";
+import { describe, test } from "node:test";
 
 // This test verifies basic library functionality works at runtime
 // It exercises the exported API without requiring actual browser/scraping
@@ -30,25 +31,25 @@ import {
 describe("Runtime smoke test", () => {
   test("all exports are available", () => {
     // Constants
-    expect(typeof DEFAULT_TIMEOUT_MS).toBe("number");
-    expect(typeof DEFAULT_TITLE).toBe("string");
-    expect(Array.isArray(MESSAGE_SELECTORS)).toBe(true);
-    expect(TITLE_SUFFIX instanceof RegExp).toBe(true);
-    expect(UI_NOISE instanceof Set).toBe(true);
+    assert.equal(typeof DEFAULT_TIMEOUT_MS, "number");
+    assert.equal(typeof DEFAULT_TITLE, "string");
+    assert.equal(Array.isArray(MESSAGE_SELECTORS), true);
+    assert.equal(TITLE_SUFFIX instanceof RegExp, true);
+    assert.equal(UI_NOISE instanceof Set, true);
 
     // Error classes
-    expect(typeof UsageError).toBe("function");
+    assert.equal(typeof UsageError, "function");
 
     // Functions
-    expect(typeof cleanFilename).toBe("function");
-    expect(typeof cleanMarkdown).toBe("function");
-    expect(typeof cleanTitle).toBe("function");
-    expect(typeof errorMessage).toBe("function");
-    expect(typeof parsePositiveInteger).toBe("function");
-    expect(typeof parseUrl).toBe("function");
-    expect(typeof configureTurndown).toBe("function");
-    expect(typeof convertTurns).toBe("function");
-    expect(typeof formatDocument).toBe("function");
+    assert.equal(typeof cleanFilename, "function");
+    assert.equal(typeof cleanMarkdown, "function");
+    assert.equal(typeof cleanTitle, "function");
+    assert.equal(typeof errorMessage, "function");
+    assert.equal(typeof parsePositiveInteger, "function");
+    assert.equal(typeof parseUrl, "function");
+    assert.equal(typeof configureTurndown, "function");
+    assert.equal(typeof convertTurns, "function");
+    assert.equal(typeof formatDocument, "function");
   });
 
   test("types are properly exported", () => {
@@ -69,27 +70,27 @@ describe("Runtime smoke test", () => {
       selector: ".test",
     };
 
-    expect(role).toBe("User");
-    expect(metadata.title).toBe("Test");
-    expect(rawTurn.html).toBe("<p>test</p>");
-    expect(message.content).toBe("test");
-    expect(cliOptions.timeoutMs).toBe(60000);
-    expect(scrapeResult.messageCount).toBe(1);
+    assert.equal(role, "User");
+    assert.equal(metadata.title, "Test");
+    assert.equal(rawTurn.html, "<p>test</p>");
+    assert.equal(message.content, "test");
+    assert.equal(cliOptions.timeoutMs, 60000);
+    assert.equal(scrapeResult.messageCount, 1);
   });
 
   test("library functions work correctly", () => {
-    expect(cleanTitle("Test | Shared Grok Conversation")).toBe("Test");
-    expect(cleanFilename("Test File")).toBe("Test_File");
-    expect(parsePositiveInteger("42", "--timeout")).toBe(42);
-    expect(parseUrl("https://grok.com/test").protocol).toBe("https:");
-    expect(errorMessage(new Error("test"))).toBe("test");
+    assert.equal(cleanTitle("Test | Shared Grok Conversation"), "Test");
+    assert.equal(cleanFilename("Test File"), "Test_File");
+    assert.equal(parsePositiveInteger("42", "--timeout"), 42);
+    assert.equal(parseUrl("https://grok.com/test").protocol, "https:");
+    assert.equal(errorMessage(new Error("test")), "test");
   });
 
   test("Turndown configuration works", () => {
     const converter = configureTurndown();
-    expect(typeof converter.turndown).toBe("function");
+    assert.equal(typeof converter.turndown, "function");
     const result = converter.turndown("<p>Hello</p>");
-    expect(result).toContain("Hello");
+    assert.match(result, /Hello/);
   });
 
   test("convertTurns works", () => {
@@ -99,11 +100,11 @@ describe("Runtime smoke test", () => {
       { role: "Grok", html: "<p>Hi there</p>" },
     ];
     const messages = convertTurns(rawTurns, converter);
-    expect(messages).toHaveLength(2);
-    expect(messages[0]?.role).toBe("User");
-    expect(messages[0]?.content).toContain("Hello");
-    expect(messages[1]?.role).toBe("Grok");
-    expect(messages[1]?.content).toContain("Hi there");
+    assert.equal(messages.length, 2);
+    assert.equal(messages[0]?.role, "User");
+    assert.match(messages[0]?.content ?? "", /Hello/);
+    assert.equal(messages[1]?.role, "Grok");
+    assert.match(messages[1]?.content ?? "", /Hi there/);
   });
 
   test("formatDocument works", () => {
@@ -116,11 +117,11 @@ describe("Runtime smoke test", () => {
       { role: "Grok", content: "Hi there" },
     ];
     const result = formatDocument(metadata, messages);
-    expect(result).toContain("# Test Conversation");
-    expect(result).toContain("https://grok.com/test");
-    expect(result).toContain("## User");
-    expect(result).toContain("Hello");
-    expect(result).toContain("## Grok");
-    expect(result).toContain("Hi there");
+    assert.match(result, /# Test Conversation/);
+    assert.match(result, /https:\/\/grok\.com\/test/);
+    assert.match(result, /## User/);
+    assert.match(result, /Hello/);
+    assert.match(result, /## Grok/);
+    assert.match(result, /Hi there/);
   });
 });
