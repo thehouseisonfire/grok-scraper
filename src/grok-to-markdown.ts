@@ -56,7 +56,7 @@ export interface ScrapeResult {
 }
 
 /** Current package version. */
-export const VERSION = "1.0.0";
+export const VERSION = "1.0.2";
 
 /** Default timeout for navigation and content loading (60,000ms). */
 export const DEFAULT_TIMEOUT_MS = 60_000;
@@ -338,8 +338,8 @@ async function renderLazyContent(page: Page): Promise<void> {
       window.scrollTo(
         0,
         document.scrollingElement?.scrollHeight ??
-          document.documentElement.scrollHeight ??
-          document.body.scrollHeight,
+        document.documentElement.scrollHeight ??
+        document.body.scrollHeight,
       );
     });
 
@@ -411,9 +411,9 @@ async function chooseMessageSelector(
 
   let best:
     | {
-        selector: string;
-        count: number;
-      }
+      selector: string;
+      count: number;
+    }
     | undefined;
 
   for (const selector of selectors) {

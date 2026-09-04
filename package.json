@@ -1,6 +1,6 @@
 {
   "name": "grok-scraper",
-  "version": "1.0.0",
+  "version": "1.0.2",
   "description": "Scrape shared Grok conversations and save them as clean Markdown",
   "type": "module",
   "license": "(MIT OR Apache-2.0)",
