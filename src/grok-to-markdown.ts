@@ -338,8 +338,8 @@ async function renderLazyContent(page: Page): Promise<void> {
       window.scrollTo(
         0,
         document.scrollingElement?.scrollHeight ??
-        document.documentElement.scrollHeight ??
-        document.body.scrollHeight,
+          document.documentElement.scrollHeight ??
+          document.body.scrollHeight,
       );
     });
 
@@ -411,9 +411,9 @@ async function chooseMessageSelector(
 
   let best:
     | {
-      selector: string;
-      count: number;
-    }
+        selector: string;
+        count: number;
+      }
     | undefined;
 
   for (const selector of selectors) {
